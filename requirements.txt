@@ -1,10 +1,12 @@
 # RunPod Serverless用の依存関係（handler.py用）
+# バージョン固定: PyTorch 2.1.0 + CUDA 11.8との互換性を保証
 runpod>=1.7.0
-torch>=2.1.0
-diffusers>=0.26.0
-transformers>=4.38.0
-accelerate>=0.27.0
+torch==2.1.0
+diffusers==0.26.3
+transformers==4.38.2
+accelerate==0.27.2
 safetensors>=0.4.0
 invisible-watermark>=0.2.0
-xformers>=0.0.24
+xformers==0.0.24
 huggingface_hub>=0.20.0
+numpy<2.0.0
