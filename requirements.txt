@@ -1,10 +1,10 @@
-runpod
-torch
-diffusers
-transformers
-accelerate
-safetensors
+# RunPod Serverless用の依存関係（handler.py用）
+runpod>=1.7.0
+torch>=2.1.0
+diffusers>=0.26.0
+transformers>=4.38.0
+accelerate>=0.27.0
+safetensors>=0.4.0
 invisible-watermark>=0.2.0
-python-dotenv
-requests
-Pillow
+xformers>=0.0.24
+huggingface_hub>=0.20.0

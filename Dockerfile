@@ -22,12 +22,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY handler.py .
 
 # （オプション）モデルを事前ダウンロードして起動を高速化
-# 注意: これによりイメージサイズが大きくなります（約13GB）
-# 本番環境では RunPod Network Volume にキャッシュすることを推奨
-RUN python3 -c "from huggingface_hub import snapshot_download; \
-    snapshot_download('stabilityai/stable-diffusion-xl-base-1.0', \
-    ignore_patterns=['*.ckpt', '*.safetensors'], allow_patterns=['*.json', '*.txt']); \
-    snapshot_download('madebyollin/sdxl-vae-fp16-fix')"
+# 初回は無効化して問題を特定しやすくする
+# 注意: モデルは初回起動時にダウンロードされます（起動に数分かかります）
+# RunPod Network Volumeを使用することで2回目以降は高速化されます
 
 # RunPod Serverless起動
 CMD ["python3", "-u", "handler.py"]

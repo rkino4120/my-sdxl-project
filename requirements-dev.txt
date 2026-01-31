@@ -1,0 +1,9 @@
+# 開発環境用の依存関係（client.py用も含む）
+
+# サーバー側の依存関係を含める
+-r requirements.txt
+
+# クライアント用の追加パッケージ
+requests>=2.31.0
+Pillow>=10.0.0
+python-dotenv>=1.0.0
