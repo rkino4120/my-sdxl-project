@@ -64,7 +64,7 @@ headers = {
 }
 
 # 参照画像のパス（存在する場合のみ使用）
-reference_image_path = "reference.jpg"  # ここに参照画像のパスを指定
+reference_image_path = "taiwanese01.png"  # ここに参照画像のパスを指定
 
 # プロンプト
 prompt = "富士山の前に立つ人物、美しい風景、8K高画質"
@@ -80,8 +80,8 @@ payload = {
         "negative_prompt": negative_prompt_en,
         "steps": 30,
         "guidance_scale": 7.5,
-        "width": 1024,
-        "height": 1024,
+        "width": 2048,
+        "height": 2048,
         "ip_adapter_scale": 0.6  # 参照画像の影響度 (0.0-1.0)
     }
 }
