@@ -3,35 +3,65 @@ from diffusers import StableDiffusionXLPipeline, AutoencoderKL
 import runpod
 import io
 import base64
+import sys
+import traceback
 
-# デバイスの自動検出
-device = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"Using device: {device}")
+print("=" * 60)
+print("RunPod Serverless Worker - Initialization Started")
+print("=" * 60)
 
-# モデルの初期化（グローバルスコープで1回だけ実行）
-print("Loading VAE...")
-vae = AutoencoderKL.from_pretrained(
-    "madebyollin/sdxl-vae-fp16-fix", 
-    torch_dtype=torch.float16
-)
-
-print("Loading SDXL pipeline...")
-pipe = StableDiffusionXLPipeline.from_pretrained(
-    "stabilityai/stable-diffusion-xl-base-1.0",
-    vae=vae,
-    torch_dtype=torch.float16,
-    variant="fp16",
-    use_safetensors=True
-)
-
-# GPUへ転送
-pipe.to(device)
-
-# 商用利用向け：見えない透かし（invisible-watermark）を無効化
-if hasattr(pipe, "watermark"):
-    pipe.watermark = None
-
-print("Model loaded successfully!")
+try:
+    # デバイスの自動検出
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"✓ Device: {device}")
+    
+    if device == "cuda":
+        print(f"  GPU: {torch.cuda.get_device_name(0)}")
+        print(f"  CUDA Version: {torch.version.cuda}")
+        print(f"  Memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
+    
+    # モデルの初期化（グローバルスコープで1回だけ実行）
+    print("\n[1/3] Loading VAE...")
+    vae = AutoencoderKL.from_pretrained(
+        "madebyollin/sdxl-vae-fp16-fix", 
+        torch_dtype=torch.float16
+    )
+    print("✓ VAE loaded")
+    
+    print("\n[2/3] Loading SDXL pipeline (this may take a few minutes)...")
+    pipe = StableDiffusionXLPipeline.from_pretrained(
+        "stabilityai/stable-diffusion-xl-base-1.0",
+        vae=vae,
+        torch_dtype=torch.float16,
+        variant="fp16",
+        use_safetensors=True
+    )
+    print("✓ Pipeline loaded")
+    
+    # GPUへ転送
+    print("\n[3/3] Moving model to device...")
+    pipe.to(device)
+    print(f"✓ Model moved to {device}")
+    
+    # 商用利用向け：見えない透かし（invisible-watermark）を無効化
+    if hasattr(pipe, "watermark"):
+        pipe.watermark = None
+        print("✓ Watermark disabled")
+    
+    print("\n" + "=" * 60)
+    print("✓ Model initialization completed successfully!")
+    print("=" * 60 + "\n")
+    
+except Exception as e:
+    print("\n" + "=" * 60)
+    print("❌ ERROR during initialization:")
+    print("=" * 60)
+    print(f"Error type: {type(e).__name__}")
+    print(f"Error message: {str(e)}")
+    print("\nFull traceback:")
+    traceback.print_exc()
+    print("=" * 60)
+    sys.exit(1)
 
 
 def handler(job):
@@ -52,6 +82,11 @@ def handler(job):
     try:
         # ジョブ入力の取得
         job_input = job["input"]
+        job_id = job.get("id", "unknown")
+        
+        print(f"\n{'='*60}")
+        print(f"Processing Job: {job_id}")
+        print(f"{'='*60}")
         
         # パラメータの取得（デフォルト値あり）
         prompt = job_input.get("prompt", "a simple landscape")
@@ -62,6 +97,9 @@ def handler(job):
         width = job_input.get("width", 1024)
         height = job_input.get("height", 1024)
         
+        print(f"Prompt: {prompt[:100]}...")
+        print(f"Size: {width}x{height}, Steps: {steps}, CFG: {cfg_scale}")
+        
         # バリデーション
         if not prompt:
             return {"error": "Input is missing the 'prompt' key. Please include a prompt."}
@@ -70,9 +108,11 @@ def handler(job):
         generator = None
         if seed is not None:
             generator = torch.Generator(device=device).manual_seed(seed)
+            print(f"Seed: {seed}")
         
         # 進捗更新
         runpod.serverless.progress_update(job, "Generating image...")
+        print("Starting image generation...")
         
         # 画像生成実行
         with torch.inference_mode():
@@ -86,10 +126,16 @@ def handler(job):
                 generator=generator,
             ).images[0]
         
+        print("✓ Image generated")
+        
         # 画像をBase64に変換
         buffered = io.BytesIO()
         image.save(buffered, format="PNG")
         img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+        img_size_mb = len(img_str) / 1024 / 1024
+        
+        print(f"✓ Image encoded (size: {img_size_mb:.2f} MB)")
+        print(f"{'='*60}\n")
         
         # 結果を返す
         return {
@@ -102,7 +148,11 @@ def handler(job):
         }
         
     except Exception as e:
-        return {"error": str(e)}
+        error_msg = f"{type(e).__name__}: {str(e)}"
+        print(f"\n❌ ERROR in handler:")
+        print(error_msg)
+        traceback.print_exc()
+        return {"error": error_msg}
 
 
 # RunPod Serverlessを起動
