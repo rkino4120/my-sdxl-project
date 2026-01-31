@@ -5,6 +5,16 @@ from io import BytesIO
 import time
 import os
 from pathlib import Path
+import re
+
+# 日本語→英語翻訳（オプション）
+try:
+    from deep_translator import GoogleTranslator
+    TRANSLATOR_AVAILABLE = True
+except ImportError:
+    TRANSLATOR_AVAILABLE = False
+    print("⚠️  deep-translatorがインストールされていません。日本語プロンプトは英語に翻訳されません。")
+    print("   インストール: pip install deep-translator")
 
 # .envファイルから環境変数を読み込む（python-dotenvがある場合）
 try:
@@ -45,6 +55,26 @@ if not ENDPOINT_ID or not API_KEY:
     )
 # ==========================================
 
+def contains_japanese(text):
+    """テキストに日本語が含まれているかチェック"""
+    return bool(re.search(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]', text))
+
+def translate_to_english(text):
+    """日本語を英語に翻訳（日本語が含まれている場合のみ）"""
+    if not TRANSLATOR_AVAILABLE:
+        return text
+    
+    if contains_japanese(text):
+        try:
+            print(f"📝 日本語プロンプトを検出: {text}")
+            translated = GoogleTranslator(source='ja', target='en').translate(text)
+            print(f"✓ 英語に翻訳: {translated}")
+            return translated
+        except Exception as e:
+            print(f"⚠️  翻訳エラー（元のテキストを使用）: {e}")
+            return text
+    return text
+
 # RunPodのエンドポイント
 # runsyncは便利ですが、長引くとタイムアウトするので、その対策を入れます
 url = f"https://api.runpod.ai/v2/{ENDPOINT_ID}/runsync"
@@ -55,9 +85,17 @@ headers = {
     "Authorization": f"Bearer {API_KEY}"
 }
 
+# プロンプト（日本語OK - 自動的に英語に翻訳されます）
+prompt = "富士山の夕焼け、美しい風景、8K高画質、masterpiece"
+negative_prompt = "低品質、ぼやけた、テキスト、透かし"
+
+# 日本語が含まれていれば自動翻訳
+prompt_en = translate_to_english(prompt)
+negative_prompt_en = translate_to_english(negative_prompt)
+
 payload = {
     "input": {
-        "prompt": "masterpiece, best quality, a futuristic city in Japan, neon lights, night, 8k resolution",
+        "prompt": prompt_en,
         "negative_prompt": "low quality, worst quality, blurry, text, watermark",
         "steps": 30,
         "guidance_scale": 7.5,
