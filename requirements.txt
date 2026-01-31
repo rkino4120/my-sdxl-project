@@ -6,7 +6,7 @@ transformers==4.38.2
 accelerate==0.27.2
 safetensors>=0.4.0
 invisible-watermark>=0.2.0
-huggingface_hub>=0.20.0
+huggingface_hub<1.0.0,>=0.20.0
 numpy<2.0.0
 # xformersは削除（PyTorch 2.1.0と互換性のあるバージョンがない）
 # メモリ最適化は torch.compile で代替可能
