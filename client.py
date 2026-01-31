@@ -86,7 +86,7 @@ headers = {
 }
 
 # プロンプト（日本語OK - 自動的に英語に翻訳されます）
-prompt = "富士山の夕焼け、美しい風景、8K高画質、masterpiece"
+prompt = "富士山の夕焼け、美しい風景、2K高画質、masterpiece"
 negative_prompt = "低品質、ぼやけた、テキスト、透かし"
 
 # 日本語が含まれていれば自動翻訳
@@ -96,7 +96,7 @@ negative_prompt_en = translate_to_english(negative_prompt)
 payload = {
     "input": {
         "prompt": prompt_en,
-        "negative_prompt": "low quality, worst quality, blurry, text, watermark",
+        "negative_prompt": negative_prompt_en,
         "steps": 30,
         "guidance_scale": 7.5,
         "seed": 42,

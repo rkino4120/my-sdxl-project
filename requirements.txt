@@ -8,5 +8,7 @@ safetensors>=0.4.0
 invisible-watermark>=0.2.0
 huggingface_hub==0.20.3
 numpy<2.0.0
+Pillow>=10.0.0
 # xformersは削除（PyTorch 2.1.0と互換性のあるバージョンがない）
 # diffusers 0.27.2は cached_download 廃止後のバージョン
+# IP-Adapter機能を含む
