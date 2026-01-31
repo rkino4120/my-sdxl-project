@@ -1,4 +1,4 @@
-potassium
+runpod
 torch
 diffusers
 transformers
