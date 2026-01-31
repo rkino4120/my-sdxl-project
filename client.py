@@ -4,22 +4,44 @@ from PIL import Image
 from io import BytesIO
 import time
 import os
+from pathlib import Path
+
+# .envファイルから環境変数を読み込む（python-dotenvがある場合）
+try:
+    from dotenv import load_dotenv
+    env_path = Path(__file__).parent / '.env'
+    if env_path.exists():
+        load_dotenv(env_path)
+        print(f"✓ .envファイルから設定を読み込みました")
+except ImportError:
+    pass  # python-dotenvがない場合はスキップ
 
 # ==========================================
 # 環境変数から認証情報を取得（必須）
 # 使い方:
-#   PowerShell: $env:RUNPOD_ENDPOINT_ID = "your_endpoint_id"
-#               $env:RUNPOD_API_KEY = "your_api_key"
-#   Linux/Mac: export RUNPOD_ENDPOINT_ID="your_endpoint_id"
-#              export RUNPOD_API_KEY="your_api_key"
+#   方法1: .envファイルを使う（推奨）
+#     1. .env.example を .env にコピー
+#     2. .env に実際の値を記入
+#     3. pip install python-dotenv
+#
+#   方法2: 環境変数を直接設定
+#     PowerShell: $env:RUNPOD_ENDPOINT_ID = "your_id"
+#                 $env:RUNPOD_API_KEY = "your_key"
+#     Linux/Mac:  export RUNPOD_ENDPOINT_ID="your_id"
+#                 export RUNPOD_API_KEY="your_key"
 # ==========================================
 ENDPOINT_ID = os.getenv("RUNPOD_ENDPOINT_ID")
 API_KEY = os.getenv("RUNPOD_API_KEY")
 
 if not ENDPOINT_ID or not API_KEY:
     raise ValueError(
-        "環境変数 RUNPOD_ENDPOINT_ID と RUNPOD_API_KEY を設定してください。\n"
-        "PowerShell: $env:RUNPOD_ENDPOINT_ID = 'your_id'; $env:RUNPOD_API_KEY = 'your_key'"
+        "❌ 環境変数 RUNPOD_ENDPOINT_ID と RUNPOD_API_KEY を設定してください。\n\n"
+        "【推奨】.envファイルを使う:\n"
+        "  1. .env.example を .env にコピー\n"
+        "  2. .env に実際のIDとAPIキーを記入\n"
+        "  3. pip install python-dotenv を実行\n\n"
+        "【代替】環境変数を直接設定:\n"
+        "  PowerShell: $env:RUNPOD_ENDPOINT_ID = 'your_id'; $env:RUNPOD_API_KEY = 'your_key'\n"
     )
 # ==========================================
 
