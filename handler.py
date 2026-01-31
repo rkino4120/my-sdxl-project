@@ -59,6 +59,8 @@ def handler(job):
         steps = job_input.get("steps", 30)
         cfg_scale = job_input.get("guidance_scale", 7.5)
         seed = job_input.get("seed", None)
+        width = job_input.get("width", 1024)
+        height = job_input.get("height", 1024)
         
         # バリデーション
         if not prompt:
@@ -79,6 +81,8 @@ def handler(job):
                 negative_prompt=negative_prompt,
                 num_inference_steps=steps,
                 guidance_scale=cfg_scale,
+                width=width,
+                height=height,
                 generator=generator,
             ).images[0]
         
@@ -92,7 +96,9 @@ def handler(job):
             "image": img_str,
             "prompt": prompt,
             "seed": seed,
-            "steps": steps
+            "steps": steps,
+            "width": width,
+            "height": height
         }
         
     except Exception as e:
