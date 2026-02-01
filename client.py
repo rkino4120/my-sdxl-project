@@ -67,24 +67,31 @@ def main():
     }
 
     # ==========================================
-    # Animagine XL 4.0 + IP-Adapter設定
-    # 参照画像の人物から高画質イラストを生成
+    # RealVisXL V5.0 + IP-Adapter設定
+    # 参照画像の人物からフォトリアル画像を生成
     # ==========================================
 
     # 参照画像のパス（人物写真）
     reference_image_path = "taiwanese01.png"  # ここに参照画像のパスを指定
 
-    # アニメイラスト用プロンプト
+    # フォトリアリスティックプロンプト
     prompt_ja = """
-masterpiece, best quality, very aesthetic, absurdres, 1boy, solo, male focus, adult asian man, about 30 years old, short black hair with undercut, fade cut, stubble beard, slightly tan skin, wearing black rectangular glasses, plain navy blue crew-neck t-shirt, casual clothes, gentle smile, calm expression, looking at viewer, sitting outdoors, natural lighting, sunlight, bokeh background, year 2024, year 2025
+Portrait of a man, confident expression, natural lighting, detailed facial features, 
+realistic skin texture, professional photography, sharp focus, cinematic composition,
+casual clothing, outdoor background, depth of field, 8k uhd
 """
 
-    # Animagine XL用の最適化されたnegative prompt
+    # RealVisXL V5.0用の最適化されたnegative prompt
     negative_prompt_base = """
-nsfw, lowres, (bad), text, error, fewer, extra, missing, worst quality, jpeg artifacts, low quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract], girl, female, woman, feminine, skirt, dress, breasts, lipstick, makeup, long eyelashes, cute, blushing, shota, multiple boys, multiple girls, multiple viewers, 2boys, 2girls, group
+(octane render, render, drawing, anime, bad photo, bad photography:1.3), 
+(worst quality, low quality, blurry:1.2), (bad teeth, deformed teeth, deformed lips), 
+(bad anatomy, bad proportions:1.1), (deformed iris, deformed pupils), 
+(deformed eyes, bad eyes), (deformed face, ugly face, bad face), 
+(deformed hands, bad hands, fused fingers), morbid, mutilated, mutation, disfigured,
+watermark, text, signature, logo
 """
     
-    print("\n使用モデル: Animagine XL 4.0")
+    print("\n使用モデル: RealVisXL V5.0")
     print("生成手法: 1024px生成 → リサイズ → Img2Img (Strength 0.3)")
 
     # プロンプトを英語に翻訳（日本語が含まれている場合）
