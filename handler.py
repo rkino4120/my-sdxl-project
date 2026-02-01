@@ -117,10 +117,14 @@ def handler(job):
         reference_image_b64 = job_input.get("reference_image", None)
         ip_adapter_scale = job_input.get("ip_adapter_scale", 0.6)
         scheduler_type = job_input.get("scheduler", "default")
+        loras = job_input.get("loras", [])  # [{"path": "...", "name": "...", "weight": 0.8}, ...]
+        lora_scale = job_input.get("lora_scale", 1.0)  # 全体の効き具合
         
         print(f"Prompt: {prompt[:100]}...")
         print(f"Size: {width}x{height}, Steps: {steps}, CFG: {cfg_scale}")
         print(f"Scheduler: {scheduler_type}")
+        if loras:
+            print(f"LoRAs: {len(loras)} loaded, global scale: {lora_scale}")
         
         # スケジューラーの設定
         if scheduler_type == "DPM++ 2M Karras":
@@ -157,6 +161,29 @@ def handler(job):
                 print(f"⚠️  Failed to load reference image or IP-Adapter: {e}")
                 reference_image = None
         
+        # LoRAのロードと設定
+        adapter_names = []
+        adapter_weights = []
+        if loras:
+            print(f"\nLoading {len(loras)} LoRA(s)...")
+            for i, lora in enumerate(loras):
+                try:
+                    lora_path = lora.get("path", "")
+                    lora_name = lora.get("name", f"lora_{i}")
+                    lora_weight = lora.get("weight", 1.0)
+                    
+                    print(f"  [{i+1}/{len(loras)}] Loading {lora_name} (weight: {lora_weight})...")
+                    pipe.load_lora_weights(lora_path, adapter_name=lora_name)
+                    adapter_names.append(lora_name)
+                    adapter_weights.append(lora_weight)
+                    print(f"  ✓ {lora_name} loaded")
+                except Exception as e:
+                    print(f"  ⚠️  Failed to load LoRA {lora.get('name', 'unknown')}: {e}")
+            
+            if adapter_names:
+                pipe.set_adapters(adapter_names, adapter_weights=adapter_weights)
+                print(f"✓ {len(adapter_names)} LoRA(s) activated")
+        
         # シード値の設定（再現性のため）
         generator = None
         if seed is not None:
@@ -180,6 +207,10 @@ def handler(job):
                 "height": 1024,
                 "generator": generator,
             }
+            
+            # LoRAのスケールを設定
+            if adapter_names:
+                generation_kwargs["cross_attention_kwargs"] = {"scale": lora_scale}
             
             # 参照画像がある場合はIP-Adapterを使用
             if reference_image:
@@ -215,6 +246,10 @@ def handler(job):
                 "guidance_scale": cfg_scale,
                 "generator": generator,
             }
+            
+            # LoRAのスケールを設定
+            if adapter_names:
+                img2img_kwargs["cross_attention_kwargs"] = {"scale": lora_scale}
             
             image = img2img_pipe(**img2img_kwargs).images[0]
         

@@ -76,16 +76,12 @@ def main():
 
     # アニメイラスト用プロンプト
     prompt_ja = """
-1boy, solo, high quality, masterpiece, best quality, highly detailed face, sharp eyes, detailed hair, 
-casual clothing, t-shirt, confident expression, cool pose, 
-outdoor background, city street, natural lighting, depth of field
+masterpiece, best quality, very aesthetic, absurdres, 1boy, solo, male focus, adult asian man, about 30 years old, short black hair with undercut, fade cut, stubble beard, slightly tan skin, wearing black rectangular glasses, plain navy blue crew-neck t-shirt, casual clothes, gentle smile, calm expression, looking at viewer, sitting outdoors, natural lighting, sunlight, bokeh background, year 2024, year 2025
 """
 
     # Animagine XL用の最適化されたnegative prompt
     negative_prompt_base = """
-lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, 
-cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, 
-username, blurry, artist name, photorealistic, 3d, realistic
+nsfw, lowres, (bad), text, error, fewer, extra, missing, worst quality, jpeg artifacts, low quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract], girl, female, woman, feminine, skirt, dress, breasts, lipstick, makeup, long eyelashes, cute, blushing, shota, multiple boys, multiple girls, multiple viewers, 2boys, 2girls, group
 """
     
     print("\n使用モデル: Animagine XL 4.0")
@@ -98,13 +94,19 @@ username, blurry, artist name, photorealistic, 3d, realistic
         "input": {
             "prompt": prompt_en.strip(),
             "negative_prompt": negative_prompt_base.strip(),
-            "steps": 35,
-            "guidance_scale": 7.0,
+            "steps": 28,
+            "guidance_scale": 6.0,
             "seed": 42,
             "width": 1536,
             "height": 1536,
-            "ip_adapter_scale": 0.7,
-            "scheduler": "DPM++ 2M Karras"
+            "ip_adapter_scale": 0.6,
+            "scheduler": "Euler a",
+            # LoRAの設定（例）
+            # "loras": [
+            #     {"path": "username/repo-name", "name": "skin", "weight": 0.6},
+            #     {"path": "username/taiwanese-lora", "name": "face", "weight": 0.8}
+            # ],
+            # "lora_scale": 1.0  # 全体の効き具合
         }
     }
 
@@ -143,10 +145,11 @@ username, blurry, artist name, photorealistic, 3d, realistic
             if not isinstance(response_data, dict):
                 print(f"❌ レスポンスが辞書ではありません: {type(response_data)}")
                 print(f"   内容: {response_data}")
-            elif response_data.get('status') == 'IN_PROGRESS':
-                # ジョブがまだ処理中の場合、ステータスをポーリング
+            elif response_data.get('status') in ['IN_PROGRESS', 'IN_QUEUE']:
+                # ジョブがまだ処理中またはキュー待ちの場合、ステータスをポーリング
                 job_id = response_data.get('id')
-                print(f"⏳ ジョブ処理中... (ID: {job_id})")
+                current_status = response_data.get('status')
+                print(f"⏳ ジョブ{current_status}... (ID: {job_id})")
                 print(f"   ステータスを確認しています...")
                 
                 status_url = f"https://api.runpod.ai/v2/{ENDPOINT_ID}/status/{job_id}"
