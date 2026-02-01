@@ -189,6 +189,15 @@ def handler(job):
         
         print("✓ Base image generated at 1024x1024")
         
+        # IP-Adapterがロードされている場合はアンロード（Img2Imgと互換性のため）
+        if reference_image:
+            try:
+                pipe.unload_ip_adapter()
+                img2img_pipe.unload_ip_adapter()
+                print("✓ IP-Adapter unloaded before Img2Img")
+            except Exception as e:
+                print(f"⚠️  IP-Adapter unload warning: {e}")
+        
         # Step 2 - 目標サイズにリサイズ
         print(f"Step 2/3: Resizing to {width}x{height}...")
         resized_image = base_image.resize((width, height), Image.LANCZOS)
