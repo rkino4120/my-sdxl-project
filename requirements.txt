@@ -1,5 +1,5 @@
 # RunPod Serverless用の依存関係（handler.py用）
-# バージョン固定: PyTorch 2.1.0 + CUDA 11.8との互換性を保証
+# RealVisXL V4.0 + DPM++ 2M Karras + Img2Img対応
 runpod>=1.7.0
 diffusers==0.27.2
 transformers==4.38.2
@@ -9,6 +9,7 @@ invisible-watermark>=0.2.0
 huggingface_hub==0.20.3
 numpy<2.0.0
 Pillow>=10.0.0
+scipy>=1.10.0
 # xformersは削除（PyTorch 2.1.0と互換性のあるバージョンがない）
-# diffusers 0.27.2は cached_download 廃止後のバージョン
+# diffusers 0.27.2はDPMSolverMultistepScheduler対応
 # IP-Adapter機能を含む
