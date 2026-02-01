@@ -32,13 +32,12 @@ try:
     
     print("\n[2/3] Loading SDXL pipeline (this may take a few minutes)...")
     pipe = StableDiffusionXLPipeline.from_pretrained(
-        "SG161222/RealVisXL_V5.0",
+        "cagliostrolab/animagine-xl-4.0",
         vae=vae,
         torch_dtype=torch.float16,
-        variant="fp16",
         use_safetensors=True
     )
-    print("✓ Pipeline loaded (RealVisXL V5.0)")
+    print("✓ Pipeline loaded (Animagine XL 4.0)")
     
     # GPUへ転送
     print("\n[3/3] Moving model to device...")

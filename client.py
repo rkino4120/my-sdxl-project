@@ -67,38 +67,56 @@ def main():
     }
 
     # ==========================================
-    # フォトリアリスティック設定
+    # Animagine XL 4.0 + IP-Adapter設定
+    # 参照画像の人物から高画質イラストを生成
     # ==========================================
 
-    # フォトリアリスティックなプロンプト（日本語OK）
+    # 参照画像のパス（人物写真）
+    reference_image_path = "taiwanese01.png"  # ここに参照画像のパスを指定
+
+    # アニメイラスト用プロンプト
     prompt_ja = """
-instagram photo, portrait photo of 28 y.o man, wearing t-shirt, perfect face, natural skin, film grain
+1boy, solo, high quality, masterpiece, best quality, highly detailed face, sharp eyes, detailed hair, 
+casual clothing, t-shirt, confident expression, cool pose, 
+outdoor background, city street, natural lighting, depth of field
 """
 
-    # RealVisXL V4.0用の最適化されたnegative prompt
+    # Animagine XL用の最適化されたnegative prompt
     negative_prompt_base = """
-(octane render, render, drawing, anime, bad photo, bad photography:1.3), (worst quality, low quality, blurry:1.2), (bad teeth, deformed teeth, deformed lips), (bad anatomy, bad proportions:1.1), (deformed iris, deformed pupils), (deformed eyes, bad eyes), (deformed face, ugly face, bad face), (deformed hands, bad hands, fused fingers), morbid, mutilated, mutation, disfigured
+lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, 
+cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, 
+username, blurry, artist name, photorealistic, 3d, realistic
 """
     
-    print("\n使用モデル: RealVisXL V5.0")
+    print("\n使用モデル: Animagine XL 4.0")
     print("生成手法: 1024px生成 → リサイズ → Img2Img (Strength 0.3)")
 
-    # 日本語を英語に翻訳 + フォトリアリスティックキーワード追加
+    # プロンプトを英語に翻訳（日本語が含まれている場合）
     prompt_en = translate_to_english(prompt_ja)
-    prompt_en = f"photorealistic portrait in landscape, professional photography, {prompt_en}, natural lighting, detailed, 8k uhd, sharp focus, realistic skin texture, cinematic composition"
 
     payload = {
         "input": {
-            "prompt": prompt_en,
+            "prompt": prompt_en.strip(),
             "negative_prompt": negative_prompt_base.strip(),
-            "steps": 30,
-            "guidance_scale": 5.5,
+            "steps": 35,
+            "guidance_scale": 7.0,
             "seed": 42,
-            "width": 2048,
-            "height": 2048,
+            "width": 1536,
+            "height": 1536,
+            "ip_adapter_scale": 0.7,
             "scheduler": "DPM++ 2M Karras"
         }
     }
+
+    # 参照画像が存在する場合は追加
+    if os.path.exists(reference_image_path):
+        print(f"📸 参照画像を読み込み: {reference_image_path}")
+        payload["input"]["reference_image"] = encode_image_to_base64(reference_image_path)
+        print("✓ 参照画像をエンコード完了")
+        print(f"   IP-Adapter影響度: {payload['input']['ip_adapter_scale']}")
+    else:
+        print("⚠️  参照画像が見つかりません。通常のtext-to-imageで生成します。")
+        print(f"   参照画像を使う場合: {reference_image_path} に画像を配置してください。")
 
     print("\nリクエスト送信中...")
     start_time = time.time()
@@ -176,16 +194,20 @@ instagram photo, portrait photo of 28 y.o man, wearing t-shirt, perfect face, na
                     
                     # タイムスタンプ付きファイル名を生成
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    output_filename = f"output_text2img_{timestamp}.png"
+                    prefix = "animagine_ip" if "reference_image" in payload["input"] else "animagine"
+                    output_filename = f"output_{prefix}_{timestamp}.png"
                     
                     # 画像保存
                     image = Image.open(BytesIO(base64.b64decode(img_base64)))
                     image.save(output_filename)
                     
                     print(f"\n✅ 画像保存完了: {output_filename}")
-                    print(f"   プロンプト: {output.get('prompt', 'N/A')}")
+                    print(f"   プロンプト: {output.get('prompt', 'N/A')[:80]}...")
                     print(f"   サイズ: {output.get('width', 'N/A')}x{output.get('height', 'N/A')}")
                     print(f"   ステップ数: {output.get('steps', 'N/A')}")
+                    
+                    if "reference_image" in payload["input"]:
+                        print(f"   参照画像使用: はい (影響度: {payload['input']['ip_adapter_scale']})")
                 else:
                     print("⚠️  予期せぬレスポンス形式:")
                     print(f"   型: {type(output)}")
