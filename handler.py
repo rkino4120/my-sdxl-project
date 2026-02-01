@@ -160,6 +160,10 @@ def handler(job):
             except Exception as e:
                 print(f"⚠️  Failed to decode reference image: {e}")
                 reference_image = None
+        else:
+            # 参照画像がない場合はIP-Adapterを無効化
+            pipe.set_ip_adapter_scale(0.0)
+            print("✓ IP-Adapter disabled (no reference image)")
         
         # シード値の設定（再現性のため）
         generator = None

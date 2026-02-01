@@ -77,7 +77,7 @@ def main():
     # フォトリアリスティックなプロンプト（日本語OK）
     # 人物 + 風景の組み合わせ
     prompt_ja = """
-city street, neon, fog, volumetric, closeup photo of 30 y.o man in dark clothes, serious face
+instagram photo, portrait photo of 28 y.o man, wearing t-shirt, perfect face, natural skin, film grain
 """
 
     # RealVisXL V4.0用の最適化されたnegative prompt
