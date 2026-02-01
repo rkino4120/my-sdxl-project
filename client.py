@@ -67,15 +67,10 @@ def main():
     }
 
     # ==========================================
-    # フォトリアリスティック + IP-Adapter設定
-    # 参照画像の人物を風景に配置
+    # フォトリアリスティック設定
     # ==========================================
 
-    # 参照画像のパス（人物写真）
-    reference_image_path = "taiwanese01.png"  # ここに参照画像のパスを指定
-
     # フォトリアリスティックなプロンプト（日本語OK）
-    # 人物 + 風景の組み合わせ
     prompt_ja = """
 instagram photo, portrait photo of 28 y.o man, wearing t-shirt, perfect face, natural skin, film grain
 """
@@ -101,20 +96,9 @@ instagram photo, portrait photo of 28 y.o man, wearing t-shirt, perfect face, na
             "seed": 42,
             "width": 2048,
             "height": 2048,
-            "ip_adapter_scale": 0.6,
             "scheduler": "DPM++ 2M Karras"
         }
     }
-
-    # 参照画像が存在する場合は追加
-    if os.path.exists(reference_image_path):
-        print(f"📸 参照画像を読み込み: {reference_image_path}")
-        payload["input"]["reference_image"] = encode_image_to_base64(reference_image_path)
-        print("✓ 参照画像をエンコード完了")
-        print(f"   IP-Adapter影響度: {payload['input']['ip_adapter_scale']}")
-    else:
-        print("⚠️  参照画像が見つかりません。通常のtext-to-imageで生成します。")
-        print(f"   参照画像を使う場合: {reference_image_path} に画像を配置してください。")
 
     print("\nリクエスト送信中...")
     start_time = time.time()
@@ -192,8 +176,7 @@ instagram photo, portrait photo of 28 y.o man, wearing t-shirt, perfect face, na
                     
                     # タイムスタンプ付きファイル名を生成
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    prefix = "ip_adapter" if os.path.exists(reference_image_path) else "text2img"
-                    output_filename = f"output_{prefix}_{timestamp}.png"
+                    output_filename = f"output_text2img_{timestamp}.png"
                     
                     # 画像保存
                     image = Image.open(BytesIO(base64.b64decode(img_base64)))
@@ -203,9 +186,6 @@ instagram photo, portrait photo of 28 y.o man, wearing t-shirt, perfect face, na
                     print(f"   プロンプト: {output.get('prompt', 'N/A')}")
                     print(f"   サイズ: {output.get('width', 'N/A')}x{output.get('height', 'N/A')}")
                     print(f"   ステップ数: {output.get('steps', 'N/A')}")
-                    
-                    if os.path.exists(reference_image_path):
-                        print(f"   参照画像使用: はい (影響度: {payload['input']['ip_adapter_scale']})")
                 else:
                     print("⚠️  予期せぬレスポンス形式:")
                     print(f"   型: {type(output)}")

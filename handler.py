@@ -64,19 +64,8 @@ try:
         pipe.watermark = None
         print("✓ Watermark disabled")
     
-    # IP-Adapterのロード（参照画像機能用）
-    print("\n[4/4] Loading IP-Adapter...")
-    try:
-        pipe.load_ip_adapter(
-            "h94/IP-Adapter",
-            subfolder="sdxl_models",
-            weight_name="ip-adapter_sdxl.bin"
-        )
-        pipe.set_ip_adapter_scale(0.6)  # デフォルトの影響度
-        print("✓ IP-Adapter loaded")
-    except Exception as e:
-        print(f"⚠️  IP-Adapter load failed (optional): {e}")
-        print("   Text-to-image will still work")
+    # IP-Adapterは必要な時のみロード（初期化時はロードしない）
+    print("\n✓ IP-Adapter: Will load on-demand when reference image is provided")
     
     print("\n" + "=" * 60)
     print("✓ Model initialization completed successfully!")
@@ -155,19 +144,19 @@ def handler(job):
                 print("Decoding reference image...")
                 img_data = base64.b64decode(reference_image_b64)
                 reference_image = Image.open(io.BytesIO(img_data)).convert("RGB")
+                
+                # IP-Adapterをロード
+                print("Loading IP-Adapter for reference image...")
+                pipe.load_ip_adapter(
+                    "h94/IP-Adapter",
+                    subfolder="sdxl_models",
+                    weight_name="ip-adapter_sdxl.bin"
+                )
                 pipe.set_ip_adapter_scale(ip_adapter_scale)
                 print(f"✓ Reference image loaded (IP-Adapter scale: {ip_adapter_scale})")
             except Exception as e:
-                print(f"⚠️  Failed to decode reference image: {e}")
+                print(f"⚠️  Failed to load reference image or IP-Adapter: {e}")
                 reference_image = None
-        
-        # 参照画像がない場合はIP-Adapterを完全にアンロード
-        if reference_image is None:
-            try:
-                pipe.unload_ip_adapter()
-                print("✓ IP-Adapter unloaded (no reference image)")
-            except Exception as e:
-                print(f"⚠️  IP-Adapter unload warning: {e}")
         
         # シード値の設定（再現性のため）
         generator = None
