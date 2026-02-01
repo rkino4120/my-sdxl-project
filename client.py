@@ -85,7 +85,7 @@ instagram photo, portrait photo of 28 y.o man, wearing t-shirt, perfect face, na
 (octane render, render, drawing, anime, bad photo, bad photography:1.3), (worst quality, low quality, blurry:1.2), (bad teeth, deformed teeth, deformed lips), (bad anatomy, bad proportions:1.1), (deformed iris, deformed pupils), (deformed eyes, bad eyes), (deformed face, ugly face, bad face), (deformed hands, bad hands, fused fingers), morbid, mutilated, mutation, disfigured
 """
     
-    print("\n使用モデル: RealVisXL V4.0")
+    print("\n使用モデル: RealVisXL V5.0")
     print("生成手法: 1024px生成 → リサイズ → Img2Img (Strength 0.3)")
 
     # 日本語を英語に翻訳 + フォトリアリスティックキーワード追加
