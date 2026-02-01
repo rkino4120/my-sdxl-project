@@ -4,8 +4,10 @@ from PIL import Image
 from io import BytesIO
 import time
 import os
+import sys
 from pathlib import Path
 import re
+from datetime import datetime
 
 # 日本語→英語翻訳（オプション）
 try:
@@ -13,10 +15,8 @@ try:
     TRANSLATOR_AVAILABLE = True
 except ImportError:
     TRANSLATOR_AVAILABLE = False
-    print("⚠️  deep-translatorがインストールされていません。日本語プロンプトは英語に翻訳されません。")
-    print("   インストール: pip install deep-translator")
 
-# .envファイルから環境変数を読み込む（python-dotenvがある場合）
+# .envファイルから環境変数を読み込む
 try:
     from dotenv import load_dotenv
     env_path = Path(__file__).parent / '.env'
@@ -24,161 +24,206 @@ try:
         load_dotenv(env_path)
         print(f"✓ .envファイルから設定を読み込みました")
 except ImportError:
-    pass  # python-dotenvがない場合はスキップ
+    pass
 
-# ==========================================
-# 環境変数から認証情報を取得（必須）
-# 使い方:
-#   方法1: .envファイルを使う（推奨）
-#     1. .env.example を .env にコピー
-#     2. .env に実際の値を記入
-#     3. pip install python-dotenv
-#
-#   方法2: 環境変数を直接設定
-#     PowerShell: $env:RUNPOD_ENDPOINT_ID = "your_id"
-#                 $env:RUNPOD_API_KEY = "your_key"
-#     Linux/Mac:  export RUNPOD_ENDPOINT_ID="your_id"
-#                 export RUNPOD_API_KEY="your_key"
-# ==========================================
 ENDPOINT_ID = os.getenv("RUNPOD_ENDPOINT_ID")
 API_KEY = os.getenv("RUNPOD_API_KEY")
 
 if not ENDPOINT_ID or not API_KEY:
-    raise ValueError(
-        "❌ 環境変数 RUNPOD_ENDPOINT_ID と RUNPOD_API_KEY を設定してください。\n\n"
-        "【推奨】.envファイルを使う:\n"
-        "  1. .env.example を .env にコピー\n"
-        "  2. .env に実際のIDとAPIキーを記入\n"
-        "  3. pip install python-dotenv を実行\n\n"
-        "【代替】環境変数を直接設定:\n"
-        "  PowerShell: $env:RUNPOD_ENDPOINT_ID = 'your_id'; $env:RUNPOD_API_KEY = 'your_key'\n"
-    )
-# ==========================================
+    raise ValueError("環境変数 RUNPOD_ENDPOINT_ID と RUNPOD_API_KEY を設定してください。")
 
 def contains_japanese(text):
     """テキストに日本語が含まれているかチェック"""
     return bool(re.search(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]', text))
 
 def translate_to_english(text):
-    """日本語を英語に翻訳（日本語が含まれている場合のみ）"""
-    if not TRANSLATOR_AVAILABLE:
+    """日本語を英語に翻訳"""
+    if not TRANSLATOR_AVAILABLE or not contains_japanese(text):
         return text
     
-    if contains_japanese(text):
-        try:
-            print(f"📝 日本語プロンプトを検出: {text}")
-            translated = GoogleTranslator(source='ja', target='en').translate(text)
-            print(f"✓ 英語に翻訳: {translated}")
-            return translated
-        except Exception as e:
-            print(f"⚠️  翻訳エラー（元のテキストを使用）: {e}")
-            return text
-    return text
-
-# RunPodのエンドポイント
-# runsyncは便利ですが、長引くとタイムアウトするので、その対策を入れます
-url = f"https://api.runpod.ai/v2/{ENDPOINT_ID}/runsync"
-status_url_template = f"https://api.runpod.ai/v2/{ENDPOINT_ID}/status/"
-
-headers = {
-    "Content-Type": "application/json",
-    "Authorization": f"Bearer {API_KEY}"
-}
-
-# プロンプト（日本語OK - 自動的に英語に翻訳されます）
-prompt = "富士山の夕焼け、美しい風景、2K高画質、masterpiece"
-negative_prompt = "低品質、ぼやけた、テキスト、透かし"
-
-# 日本語が含まれていれば自動翻訳
-prompt_en = translate_to_english(prompt)
-negative_prompt_en = translate_to_english(negative_prompt)
-
-payload = {
-    "input": {
-        "prompt": prompt_en,
-        "negative_prompt": negative_prompt_en,
-        "steps": 30,
-        "guidance_scale": 7.5,
-        "seed": 42,
-        "width": 1024,
-        "height": 1024
-    }
-}
-
-def decode_and_save_image(img_data):
-    """画像データをデコードして保存する関数"""
     try:
-        image = Image.open(BytesIO(base64.b64decode(img_data)))
-        image.save("output_runpod.png")
-        print("\n✅ 画像保存完了: output_runpod.png を確認してください！")
+        print(f"📝 日本語プロンプトを検出: {text}")
+        translated = GoogleTranslator(source='ja', target='en').translate(text)
+        print(f"✓ 英語に翻訳: {translated}")
+        return translated
     except Exception as e:
-        print(f"画像の保存に失敗しました: {e}")
+        print(f"⚠️  翻訳エラー: {e}")
+        return text
 
-print("🚀 リクエスト送信中...（サーバー起動待ちの場合、数分かかります）")
-start_time = time.time()
+def encode_image_to_base64(image_path):
+    """画像をBase64エンコード"""
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode('utf-8')
 
-try:
-    # 1. まず生成リクエストを送る
-    response = requests.post(url, json=payload, headers=headers, timeout=600)
-    response_data = response.json()
+# ==========================================
+# IP-Adapter使用例：参照画像から人物の特徴を抽出
+# ==========================================
+
+def main():
+    url = f"https://api.runpod.ai/v2/{ENDPOINT_ID}/runsync"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {API_KEY}"
+    }
+
+    # ==========================================
+    # フォトリアリスティック + IP-Adapter設定
+    # 参照画像の人物を風景に配置
+    # ==========================================
+
+    # 参照画像のパス（人物写真）
+    reference_image_path = "taiwanese01.png"  # ここに参照画像のパスを指定
+
+    # フォトリアリスティックなプロンプト（日本語OK）
+    # 人物 + 風景の組み合わせ
+    prompt_ja = """
+city street, neon, fog, volumetric, closeup photo of 30 y.o man in dark clothes, serious face
+"""
+
+    # RealVisXL V4.0用の最適化されたnegative prompt
+    negative_prompt_base = """
+(octane render, render, drawing, anime, bad photo, bad photography:1.3), (worst quality, low quality, blurry:1.2), (bad teeth, deformed teeth, deformed lips), (bad anatomy, bad proportions:1.1), (deformed iris, deformed pupils), (deformed eyes, bad eyes), (deformed face, ugly face, bad face), (deformed hands, bad hands, fused fingers), morbid, mutilated, mutation, disfigured
+"""
     
-    status = response_data.get('status')
-    job_id = response_data.get('id')
+    print("\n使用モデル: RealVisXL V4.0")
+    print("生成手法: 1024px生成 → リサイズ → Img2Img (Strength 0.3)")
 
-    print(f"初期ステータス: {status} (ID: {job_id})")
+    # 日本語を英語に翻訳 + フォトリアリスティックキーワード追加
+    prompt_en = translate_to_english(prompt_ja)
+    prompt_en = f"photorealistic portrait in landscape, professional photography, {prompt_en}, natural lighting, detailed, 8k uhd, sharp focus, realistic skin texture, cinematic composition"
 
-    # 2. まだ終わっていない場合(IN_QUEUE または IN_PROGRESS)は、終わるまで監視する
-    if status in ['IN_QUEUE', 'IN_PROGRESS'] and job_id:
-        print("⏳ 処理待ちまたは実行中... 完了まで定期的に確認します。")
-        
-        while True:
-            time.sleep(5) # 5秒待機
-            
-            # ステータス確認APIを叩く
-            check_url = status_url_template + job_id
-            check_res = requests.get(check_url, headers=headers)
-            check_data = check_res.json()
-            
-            current_status = check_data.get('status')
-            print(f"\r経過時間: {time.time() - start_time:.1f}秒 - 現在の状況: {current_status}", end="")
-            
-            if current_status == 'COMPLETED':
-                response_data = check_data # データを上書き
-                print("\n✨ 生成完了！")
-                break
-            elif current_status == 'FAILED':
-                print("\n❌ 生成失敗。")
-                print("エラー詳細:", check_data)
-                exit()
-            
-            # まだならループ継続
+    payload = {
+        "input": {
+            "prompt": prompt_en,
+            "negative_prompt": negative_prompt_base.strip(),
+            "steps": 30,
+            "guidance_scale": 5.5,
+            "seed": 42,
+            "width": 1024,
+            "height": 1024,
+            "ip_adapter_scale": 0.6,
+            "scheduler": "DPM++ 2M Karras"
+        }
+    }
 
-    # 3. 結果の取り出し（完了時）
-    if 'output' in response_data:
-        output = response_data['output']
-        
-        # app.pyの返し方によって構造が違う場合への対応
-        img_base64 = None
-        
-        # パターンA: { "output": "base64..." }
-        if isinstance(output, dict) and 'output' in output: 
-             img_base64 = output['output']
-        # パターンB: { "image": "base64..." }
-        elif isinstance(output, dict) and 'image' in output:
-             img_base64 = output['image']
-        # パターンC: 単なる文字列として返ってくる場合
-        elif isinstance(output, str):
-             img_base64 = output
-             
-        if img_base64:
-            decode_and_save_image(img_base64)
-        else:
-            print("\n⚠️ 画像データが見つかりませんでした。レスポンスの中身:")
-            print(response_data)
-            
+    # 参照画像が存在する場合は追加
+    if os.path.exists(reference_image_path):
+        print(f"📸 参照画像を読み込み: {reference_image_path}")
+        payload["input"]["reference_image"] = encode_image_to_base64(reference_image_path)
+        print("✓ 参照画像をエンコード完了")
+        print(f"   IP-Adapter影響度: {payload['input']['ip_adapter_scale']}")
     else:
-        print("\nエラーまたは予期せぬレスポンス:")
-        print(response_data)
+        print("⚠️  参照画像が見つかりません。通常のtext-to-imageで生成します。")
+        print(f"   参照画像を使う場合: {reference_image_path} に画像を配置してください。")
 
-except Exception as e:
-    print(f"\n通信エラーが発生しました: {e}")
+    print("\nリクエスト送信中...")
+    start_time = time.time()
+
+    try:
+        response = requests.post(url, json=payload, headers=headers, timeout=600)
+        
+        # レスポンスのステータスコードを確認
+        if response.status_code != 200:
+            print(f"❌ HTTPエラー: {response.status_code}")
+            print(f"   レスポンス: {response.text[:500]}")
+        else:
+            # JSONとしてパース
+            try:
+                response_data = response.json()
+            except ValueError as json_err:
+                print(f"❌ JSON解析エラー: {json_err}")
+                print(f"   レスポンス内容: {response.text[:500]}")
+                raise
+            
+            print(f"完了！ かかった時間: {time.time() - start_time:.2f}秒")
+
+            # RunPodのステータスを確認
+            if not isinstance(response_data, dict):
+                print(f"❌ レスポンスが辞書ではありません: {type(response_data)}")
+                print(f"   内容: {response_data}")
+            elif response_data.get('status') == 'IN_PROGRESS':
+                # ジョブがまだ処理中の場合、ステータスをポーリング
+                job_id = response_data.get('id')
+                print(f"⏳ ジョブ処理中... (ID: {job_id})")
+                print(f"   ステータスを確認しています...")
+                
+                status_url = f"https://api.runpod.ai/v2/{ENDPOINT_ID}/status/{job_id}"
+                max_retries = 60  # 最大60回（約10分）
+                retry_interval = 10  # 10秒ごと
+                
+                for attempt in range(max_retries):
+                    time.sleep(retry_interval)
+                    status_response = requests.get(status_url, headers=headers)
+                    status_data = status_response.json()
+                    
+                    current_status = status_data.get('status')
+                    print(f"   [{attempt + 1}/{max_retries}] ステータス: {current_status}")
+                    
+                    if current_status == 'COMPLETED':
+                        response_data = status_data
+                        print(f"✅ ジョブ完了！ 合計時間: {time.time() - start_time:.2f}秒")
+                        break
+                    elif current_status == 'FAILED':
+                        print(f"❌ ジョブ失敗: {status_data.get('error', 'Unknown error')}")
+                        sys.exit(1)
+                    elif current_status not in ['IN_PROGRESS', 'IN_QUEUE']:
+                        print(f"⚠️  予期しないステータス: {current_status}")
+                        print(f"   レスポンス: {status_data}")
+                        sys.exit(1)
+                else:
+                    print(f"❌ タイムアウト: {max_retries * retry_interval}秒以内に完了しませんでした")
+                    sys.exit(1)
+            
+            # 結果を処理
+            if 'output' in response_data:
+                output = response_data['output']
+                
+                # outputが辞書であることを確認
+                if not isinstance(output, dict):
+                    print(f"⚠️  予期しない出力形式: {type(output)}")
+                    print(f"   内容: {output}")
+                    print(f"\n   レスポンス全体:")
+                    import json
+                    print(json.dumps(response_data, indent=2, ensure_ascii=False))
+                elif 'error' in output:
+                    print(f"❌ サーバーエラー: {output['error']}")
+                elif 'image' in output:
+                    img_base64 = output['image']
+                    
+                    # タイムスタンプ付きファイル名を生成
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    prefix = "ip_adapter" if os.path.exists(reference_image_path) else "text2img"
+                    output_filename = f"output_{prefix}_{timestamp}.png"
+                    
+                    # 画像保存
+                    image = Image.open(BytesIO(base64.b64decode(img_base64)))
+                    image.save(output_filename)
+                    
+                    print(f"\n✅ 画像保存完了: {output_filename}")
+                    print(f"   プロンプト: {output.get('prompt', 'N/A')}")
+                    print(f"   サイズ: {output.get('width', 'N/A')}x{output.get('height', 'N/A')}")
+                    print(f"   ステップ数: {output.get('steps', 'N/A')}")
+                    
+                    if os.path.exists(reference_image_path):
+                        print(f"   参照画像使用: はい (影響度: {payload['input']['ip_adapter_scale']})")
+                else:
+                    print("⚠️  予期せぬレスポンス形式:")
+                    print(f"   型: {type(output)}")
+                    print(f"   内容: {output}")
+            else:
+                print("❌ 'output'キーが見つかりません:")
+                print(f"   レスポンスキー: {response_data.keys() if isinstance(response_data, dict) else 'N/A'}")
+                print(f"   内容: {response_data}")
+
+    except requests.exceptions.Timeout:
+        print(f"❌ タイムアウトエラー: 600秒以内に応答がありませんでした")
+    except requests.exceptions.RequestException as req_err:
+        print(f"❌ リクエストエラー: {req_err}")
+    except Exception as e:
+        print(f"❌ 予期せぬエラー: {type(e).__name__}: {e}")
+        import traceback
+        print("\n詳細なトレースバック:")
+        traceback.print_exc()
+
+if __name__ == "__main__":
+    main()

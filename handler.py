@@ -1,5 +1,5 @@
 import torch
-from diffusers import StableDiffusionXLPipeline, AutoencoderKL
+from diffusers import StableDiffusionXLPipeline, StableDiffusionXLImg2ImgPipeline, AutoencoderKL, DPMSolverMultistepScheduler
 from diffusers.utils import load_image
 import runpod
 import io
@@ -32,18 +32,32 @@ try:
     
     print("\n[2/3] Loading SDXL pipeline (this may take a few minutes)...")
     pipe = StableDiffusionXLPipeline.from_pretrained(
-        "stabilityai/stable-diffusion-xl-base-1.0",
+        "SG161222/RealVisXL_V4.0",
         vae=vae,
         torch_dtype=torch.float16,
         variant="fp16",
         use_safetensors=True
     )
-    print("✓ Pipeline loaded")
+    print("✓ Pipeline loaded (RealVisXL V4.0)")
     
     # GPUへ転送
     print("\n[3/3] Moving model to device...")
     pipe.to(device)
     print(f"✓ Model moved to {device}")
+    
+    # Img2Imgパイプラインも初期化
+    print("\n[3.5/4] Loading Img2Img pipeline...")
+    img2img_pipe = StableDiffusionXLImg2ImgPipeline(
+        vae=pipe.vae,
+        text_encoder=pipe.text_encoder,
+        text_encoder_2=pipe.text_encoder_2,
+        tokenizer=pipe.tokenizer,
+        tokenizer_2=pipe.tokenizer_2,
+        unet=pipe.unet,
+        scheduler=pipe.scheduler,
+    )
+    img2img_pipe.to(device)
+    print("✓ Img2Img pipeline loaded")
     
     # 商用利用向け：見えない透かし（invisible-watermark）を無効化
     if hasattr(pipe, "watermark"):
@@ -114,9 +128,21 @@ def handler(job):
         height = job_input.get("height", 1024)
         reference_image_b64 = job_input.get("reference_image", None)
         ip_adapter_scale = job_input.get("ip_adapter_scale", 0.6)
+        scheduler_type = job_input.get("scheduler", "default")
         
         print(f"Prompt: {prompt[:100]}...")
         print(f"Size: {width}x{height}, Steps: {steps}, CFG: {cfg_scale}")
+        print(f"Scheduler: {scheduler_type}")
+        
+        # スケジューラーの設定
+        if scheduler_type == "DPM++ 2M Karras":
+            pipe.scheduler = DPMSolverMultistepScheduler.from_config(
+                pipe.scheduler.config,
+                use_karras_sigmas=True,
+                algorithm_type="dpmsolver++"
+            )
+            img2img_pipe.scheduler = pipe.scheduler
+            print("✓ Scheduler set to DPM++ 2M Karras")
         
         # バリデーション
         if not prompt:
@@ -146,15 +172,16 @@ def handler(job):
         runpod.serverless.progress_update(job, f"{mode}...")
         print(f"Starting {mode}...")
         
-        # 画像生成実行
+        # 画像生成実行: Step 1 - 1024pxで生成
+        print("Step 1/3: Generating 1024px base image...")
         with torch.inference_mode():
             generation_kwargs = {
                 "prompt": prompt,
                 "negative_prompt": negative_prompt,
                 "num_inference_steps": steps,
                 "guidance_scale": cfg_scale,
-                "width": width,
-                "height": height,
+                "width": 1024,
+                "height": 1024,
                 "generator": generator,
             }
             
@@ -162,9 +189,31 @@ def handler(job):
             if reference_image:
                 generation_kwargs["ip_adapter_image"] = reference_image
             
-            image = pipe(**generation_kwargs).images[0]
+            base_image = pipe(**generation_kwargs).images[0]
         
-        print("✓ Image generated")
+        print("✓ Base image generated at 1024x1024")
+        
+        # Step 2 - 目標サイズにリサイズ
+        print(f"Step 2/3: Resizing to {width}x{height}...")
+        resized_image = base_image.resize((width, height), Image.LANCZOS)
+        print("✓ Image resized")
+        
+        # Step 3 - Img2Img (Strength 0.3)で品質向上
+        print("Step 3/3: Applying Img2Img refinement (strength=0.3)...")
+        with torch.inference_mode():
+            img2img_kwargs = {
+                "prompt": prompt,
+                "negative_prompt": negative_prompt,
+                "image": resized_image,
+                "strength": 0.3,
+                "num_inference_steps": steps,
+                "guidance_scale": cfg_scale,
+                "generator": generator,
+            }
+            
+            image = img2img_pipe(**img2img_kwargs).images[0]
+        
+        print("✓ Image refined with Img2Img")
         
         # 画像をBase64に変換
         buffered = io.BytesIO()
