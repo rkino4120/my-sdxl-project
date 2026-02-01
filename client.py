@@ -99,8 +99,8 @@ instagram photo, portrait photo of 28 y.o man, wearing t-shirt, perfect face, na
             "steps": 30,
             "guidance_scale": 5.5,
             "seed": 42,
-            "width": 1024,
-            "height": 1024,
+            "width": 2048,
+            "height": 2048,
             "ip_adapter_scale": 0.6,
             "scheduler": "DPM++ 2M Karras"
         }
