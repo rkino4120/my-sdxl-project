@@ -40,6 +40,19 @@ try:
     )
     print("✓ Pipeline loaded (RealVisXL V5.0)")
     
+    # NegativeXL Embeddingのロード
+    print("\n[2.5/3] Loading NegativeXL Embedding...")
+    try:
+        pipe.load_textual_inversion(
+            "gsdf/Counterfeit-XL",
+            weight_name="negativeXL_D.safetensors",
+            token="negativeXL_D"
+        )
+        print("✓ NegativeXL Embedding loaded (trigger: negativeXL_D)")
+    except Exception as e:
+        print(f"⚠️  NegativeXL Embedding could not be loaded: {e}")
+        print("   Continuing without NegativeXL...")
+    
     # GPUへ転送
     print("\n[3/3] Moving model to device...")
     pipe.to(device)
@@ -109,7 +122,7 @@ def handler(job):
         
         # パラメータの取得（デフォルト値あり）
         prompt = job_input.get("prompt", "a simple landscape")
-        negative_prompt = job_input.get("negative_prompt", "low quality, blurry")
+        negative_prompt = job_input.get("negative_prompt", "negativeXL_D, low quality, blurry")
         steps = job_input.get("steps", 30)
         cfg_scale = job_input.get("guidance_scale", 7.5)
         seed = job_input.get("seed", None)

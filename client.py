@@ -76,19 +76,12 @@ def main():
 
     # フォトリアリスティックプロンプト
     prompt_ja = """
-Portrait of a man, confident expression, natural lighting, detailed facial features, 
-realistic skin texture, professional photography, sharp focus, cinematic composition,
-casual clothing, outdoor background, depth of field, 8k uhd
+A highly artistic, fine-art portrait of an 30-year-old asian male model outdoors in natural sunlight, facial hair, goatee, bulky, his hands behind his head, wearing a black police cap, fatigue cap, , his athletic build subtly shown, brown eyes and messy dark hair glowing with realistic detail, natural textured skin and sharply defined facial features, a soft blurred background enhances the depth of field, elegant and emotionally rich editorial composition, head and shoulders framing, sunlight casting soft highlights, photographed with a Canon EOS R6 Mark II, ultra-high-definition, best quality, 8K, highly aesthetic, outstanding composition, professional portrait photography, stomach, waist, white pants,  upper body, ((excessive sweaty, sweating profusely, wet)), (asian male, taiwanese man, bara,male focus, manly, masculine, rugged face, robust, sturdy, athletic build, fit, policeman, black pants, black shirt, open shirt, open clothes, short sleeves:1.2), outdoor
 """
 
     # RealVisXL V5.0用の最適化されたnegative prompt
     negative_prompt_base = """
-(octane render, render, drawing, anime, bad photo, bad photography:1.3), 
-(worst quality, low quality, blurry:1.2), (bad teeth, deformed teeth, deformed lips), 
-(bad anatomy, bad proportions:1.1), (deformed iris, deformed pupils), 
-(deformed eyes, bad eyes), (deformed face, ugly face, bad face), 
-(deformed hands, bad hands, fused fingers), morbid, mutilated, mutation, disfigured,
-watermark, text, signature, logo
+worst quality, low quality
 """
     
     print("\n使用モデル: RealVisXL V5.0")
